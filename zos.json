@@ -3,6 +3,6 @@
   "name": "react-ethereum-example",
   "version": "0.1.0",
   "contracts": {
-    "Counter": "Counter"
+    "Ballot": "Ballot"
   }
 }

@@ -1,11 +1,8 @@
 import React, { Component } from "react";
 import getWeb3, { getGanacheWeb3 } from "./utils/getWeb3";
-import Header from "./components/Header/index.js";
-import Footer from "./components/Footer/index.js";
 import Hero from "./components/Hero/index.js";
-import Web3Info from "./components/Web3Info/index.js";
-import CounterUI from "./components/Counter/index.js";
-import Wallet from "./components/Wallet/index.js";
+import BallotUI from "./components/Ballot/index.js";
+import BallotAdmin from "./components/BallotAdmin/index.js";
 import Instructions from "./components/Instructions/index.js";
 import { Loader } from 'rimble-ui';
 
@@ -13,6 +10,18 @@ import { zeppelinSolidityHotLoaderOptions } from '../config/webpack';
 
 import styles from './App.module.scss';
 
+const formatBallotState = (number)  => {
+  switch (Number(number)) {
+    case 0:
+      return 'Created';
+    case 1:
+      return 'Voting';
+    case 2: 
+      return 'Ended';
+    default:
+    return '';
+  }
+}
 class App extends Component {
   state = {
     storageValue: 0,
@@ -34,10 +43,10 @@ class App extends Component {
 
   componentDidMount = async () => {
     const hotLoaderDisabled = zeppelinSolidityHotLoaderOptions.disabled;
-    let Counter = {};
+    let Ballot = {};
     let Wallet = {};
     try {
-      Counter = require("../../contracts/Counter.sol");
+      Ballot = require("../../contracts/Ballot.sol")
       Wallet = require("../../contracts/Wallet.sol");
     } catch (e) {
       console.log(e);
@@ -64,17 +73,16 @@ class App extends Component {
         let instance = null;
         let instanceWallet = null;
         let deployedNetwork = null;
-        if (Counter.networks) {
-          deployedNetwork = Counter.networks[networkId.toString()];
+        if (Ballot.networks) {
+          deployedNetwork = Ballot.networks[networkId.toString()];
           if (deployedNetwork) {
             instance = new web3.eth.Contract(
-              Counter.abi,
+              Ballot.abi,
               deployedNetwork && deployedNetwork.address,
             );
           }
         }
         if (Wallet.networks) {
-          console.log('instance : ', instance);
           deployedNetwork = Wallet.networks[networkId.toString()];
           if (deployedNetwork) {
             instanceWallet = new web3.eth.Contract(
@@ -115,39 +123,114 @@ class App extends Component {
 
   refreshValues = (instance, instanceWallet) => {
     if (instance) {
-      this.getCount();
+      this.getName();
+      this.getProposal();
+      this.getVoteState();
+      this.getVoteCount();
+      this.getVoterCount();
+      this.getFinalCount();
+      this.getOfficialAddress();
+      this.isAddressRegistered();
+      this.hasAddressVoted();
     }
     if (instanceWallet) {
       this.updateTokenOwner();
     }
   }
 
-  getCount = async () => {
+  // fetch data that will drive the UI
+  getName = async () => {
     const { contract } = this.state;
-    // Get the value from the contract to prove it worked.
-    const response = await contract.methods.getCounter().call();
-    // Update state with the result.
-    this.setState({ count: response });
-  };
+    const response = await contract.methods.getName().call();
+    this.setState({ ballotName: response})
+  }
+  getProposal = async () => {
+    const { contract } = this.state;
+    const response = await contract.methods.getProposal().call();
+    this.setState({ proposal: response })
+  }
+  getVoteState = async () => {
+    const { contract } = this.state;
+    const response = await contract.methods.getState().call();
+    this.setState({ voteState: formatBallotState(response) });
+  }
+  getVoteCount = async () => {
+    const { contract } = this.state;
+    const response = await contract.methods.getVoteCount().call();
+    this.setState({ voteCount: response });
+  }
+  getVoterCount = async () => {
+    const { contract } = this.state;
+    const response = await contract.methods.getVoterCount().call();
+    this.setState({ voterCount: response });
+  }
+  getFinalCount = async () => {
+    const { contract } = this.state;
+    const response = await contract.methods.getVoterCount().call();
+    this.setState({ finalCount: response });
+  }
+  getOfficialAddress = async () => {
+    const { accounts, contract } = this.state;
+    const response = await contract.methods.getOfficialAddress().call();
+    this.setState({
+      contractOfficial: response.toString() === accounts[0].toString(),
+      officialAddress: response
+    });
+  }
+  isAddressRegistered = async () => {
+    const { accounts, contract } = this.state; 
+    const response = await contract.methods.isAddressRegistered(accounts[0]).call();
+    this.setState({ isAddressRegistered: response });
+  }
+  hasAddressVoted = async () => {
+    const { accounts, contract } = this.state; 
+    const response = await contract.methods.hasAddressVoted(accounts[0]).call();
+    this.setState({ hasAddressVoted: response }); 
+  }
 
+  // user actions
+  registerVoter = async (name) => {
+    const { accounts, contract } = this.state;
+    await contract.methods.registerVoter(name).send({ from: accounts[0] });
+    this.getVoterCount();
+    this.isAddressRegistered();
+  }
+  castVote = async (choice) => {
+    const { accounts, contract } = this.state;
+    await contract.methods.doVote(choice).send({ from: accounts[0] });
+    this.getVoteCount();
+    this.hasAddressVoted();
+  }
+  startVotingPeriod = async () => {
+    const { accounts, contract } = this.state;
+    await contract.methods.startVote().send({ from: accounts[0] });
+    this.getVoteState();
+  }
+  endVotingPeriod = async () => {
+    const { accounts, contract } = this.state;
+    await contract.methods.endVote().send({ from: accounts[0] });
+    this.getVoteState();
+    this.getFinalCount();
+  }
+  updateName = async (name) => {
+    const { accounts, contract } = this.state;
+    await contract.methods.updateName(name).send({ from: accounts[0] });
+    this.getName();
+  }
+  updateProposal = async (proposal) => {
+    const { accounts, contract } = this.state;
+    await contract.methods.updateProposal(proposal).send({ from: accounts[0] });
+    this.getProposal();
+  }
+
+
+  // wallet ownership
   updateTokenOwner = async () => {
     const { wallet, accounts } = this.state;
     // Get the value from the contract to prove it worked.
     const response = await wallet.methods.owner().call();
     // Update state with the result.
     this.setState({ tokenOwner: response.toString() === accounts[0].toString() });
-  };
-
-  increaseCount = async (number) => {
-    const { accounts, contract } = this.state;
-    await contract.methods.increaseCounter(number).send({ from: accounts[0] });
-    this.getCount();
-  };
-
-  decreaseCount = async (number) => {
-    const { accounts, contract } = this.state;
-    await contract.methods.decreaseCounter(number).send({ from: accounts[0] });
-    this.getCount();
   };
 
   renounceOwnership = async (number) => {
@@ -183,6 +266,7 @@ class App extends Component {
     );
   }
 
+
   renderBody() {
     const { hotLoaderDisabled, networkType, accounts, ganacheAccounts } = this.state;
     const updgradeCommand = (networkType === 'private' && !hotLoaderDisabled) ? "upgrade-auto" : "upgrade";
@@ -190,19 +274,25 @@ class App extends Component {
       <div className={styles.wrapper}>
         {!this.state.web3 && this.renderLoader()}
         {this.state.web3 && !this.state.contract && (
-          this.renderDeployCheck('counter')
+          this.renderDeployCheck('ballot')
         )}
         {this.state.web3 && this.state.contract && (
           <div className={styles.contracts}>
-            <h1>Counter Contract is good to Go!</h1>
-            <p>Interact with your contract on the right.</p>
-            <p> You can see your account info on the left </p>
+            <h1>{this.state.ballotName}: Yes or No?</h1>
+
             <div className={styles.widgets}>
-              <Web3Info {...this.state} />
-              <CounterUI
-                decrease={this.decreaseCount}
-                increase={this.increaseCount}
-                {...this.state} />
+              <BallotAdmin
+                updateName={this.updateName}
+                updateProposal={this.updateProposal}
+                startVotingPeriod={this.startVotingPeriod}
+                endVotingPeriod={this.endVotingPeriod}
+                {...this.state}
+              />
+              <BallotUI
+                registerVoter={this.registerVoter}
+                castVote={this.castVote}
+                {...this.state}
+              />
             </div>
             {this.state.balance < 0.1 && (
               <Instructions
@@ -210,12 +300,12 @@ class App extends Component {
                 name="metamask"
                 accounts={accounts} />
             )}
-            {this.state.balance >= 0.1 && (
+            {/* {this.state.balance >= 0.1 && (
               <Instructions
                 ganacheAccounts={this.state.ganacheAccounts}
                 name={updgradeCommand}
                 accounts={accounts} />
-            )}
+            )} */}
           </div>
         )}
       </div>
@@ -243,42 +333,12 @@ class App extends Component {
     );
   }
 
-  renderEVM() {
-    return (
-      <div className={styles.wrapper}>
-      {!this.state.web3 && this.renderLoader()}
-      {this.state.web3 && !this.state.wallet && (
-        this.renderDeployCheck('evm')
-      )}
-      {this.state.web3 && this.state.wallet && (
-        <div className={styles.contracts}>
-          <h1>Wallet Contract is good to Go!</h1>
-          <p>Interact with your contract on the right.</p>
-          <p> You can see your account info on the left </p>
-          <div className={styles.widgets}>
-            <Web3Info {...this.state} />
-            <Wallet
-              renounce={this.renounceOwnership}
-              {...this.state} />
-          </div>
-          <Instructions
-            ganacheAccounts={this.state.ganacheAccounts}
-            name="evm" accounts={this.state.accounts} />
-        </div>
-      )}
-      </div>
-    );
-  }
-
   render() {
     return (
       <div className={styles.App}>
-        <Header />
           {this.state.route === '' && this.renderInstructions()}
-          {this.state.route === 'counter' && this.renderBody()}
-          {this.state.route === 'evm' && this.renderEVM()}
+          {this.state.route === 'ballot' && this.renderBody()}
           {this.state.route === 'faq' && this.renderFAQ()}
-        <Footer />
       </div>
     );
   }
