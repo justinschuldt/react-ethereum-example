@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import getWeb3, { getGanacheWeb3 } from "./utils/getWeb3";
-import Hero from "./components/Hero/index.js";
 import BallotUI from "./components/Ballot/index.js";
 import BallotAdmin from "./components/BallotAdmin/index.js";
 import Instructions from "./components/Instructions/index.js";
@@ -28,7 +27,6 @@ class App extends Component {
     web3: null,
     accounts: null,
     contract: null,
-    route: window.location.pathname.replace("/","")
   };
 
   getGanacheAddresses = async () => {
@@ -223,22 +221,7 @@ class App extends Component {
     this.getProposal();
   }
 
-
-  // wallet ownership
-  updateTokenOwner = async () => {
-    const { wallet, accounts } = this.state;
-    // Get the value from the contract to prove it worked.
-    const response = await wallet.methods.owner().call();
-    // Update state with the result.
-    this.setState({ tokenOwner: response.toString() === accounts[0].toString() });
-  };
-
-  renounceOwnership = async (number) => {
-    const { accounts, wallet } = this.state;
-    await wallet.methods.renounceOwnership().send({ from: accounts[0] });
-    this.updateTokenOwner();
-  };
-
+  // render
   renderLoader() {
     return (
       <div className={styles.loader}>
@@ -266,79 +249,42 @@ class App extends Component {
     );
   }
 
-
-  renderBody() {
-    const { hotLoaderDisabled, networkType, accounts, ganacheAccounts } = this.state;
-    const updgradeCommand = (networkType === 'private' && !hotLoaderDisabled) ? "upgrade-auto" : "upgrade";
-    return (
-      <div className={styles.wrapper}>
-        {!this.state.web3 && this.renderLoader()}
-        {this.state.web3 && !this.state.contract && (
-          this.renderDeployCheck('ballot')
-        )}
-        {this.state.web3 && this.state.contract && (
-          <div className={styles.contracts}>
-            <h1>{this.state.ballotName}: Yes or No?</h1>
-
-            <div className={styles.widgets}>
-              <BallotAdmin
-                updateName={this.updateName}
-                updateProposal={this.updateProposal}
-                startVotingPeriod={this.startVotingPeriod}
-                endVotingPeriod={this.endVotingPeriod}
-                {...this.state}
-              />
-              <BallotUI
-                registerVoter={this.registerVoter}
-                castVote={this.castVote}
-                {...this.state}
-              />
-            </div>
-            {this.state.balance < 0.1 && (
-              <Instructions
-                ganacheAccounts={ganacheAccounts}
-                name="metamask"
-                accounts={accounts} />
-            )}
-            {/* {this.state.balance >= 0.1 && (
-              <Instructions
-                ganacheAccounts={this.state.ganacheAccounts}
-                name={updgradeCommand}
-                accounts={accounts} />
-            )} */}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  renderInstructions() {
-    return (
-      <div className={styles.wrapper}>
-        <Hero />
-        <Instructions
-          ganacheAccounts={this.state.ganacheAccounts}
-          name="setup" accounts={this.state.accounts} />
-      </div>
-    );
-  }
-
-  renderFAQ() {
-    return (
-      <div className={styles.wrapper}>
-        <Instructions
-          ganacheAccounts={this.state.ganacheAccounts}
-          name="faq" accounts={this.state.accounts} />
-      </div>
-    );
-  }
-
   render() {
+    const { accounts, ganacheAccounts } = this.state;
     return (
       <div className={styles.App}>
-          {this.state.route === '' && this.renderInstructions()}
-          {this.state.route === 'ballot' && this.renderBody()}
-          {this.state.route === 'faq' && this.renderFAQ()}
+        <div className={styles.wrapper}>
+          {!this.state.web3 && this.renderLoader()}
+          {this.state.web3 && !this.state.contract && (
+            this.renderDeployCheck('ballot')
+          )}
+          {this.state.web3 && this.state.contract && (
+            <div className={styles.contracts}>
+              <h1>{this.state.ballotName}: Yes or No?</h1>
+
+              <div className={styles.widgets}>
+                <BallotAdmin
+                  updateName={this.updateName}
+                  updateProposal={this.updateProposal}
+                  startVotingPeriod={this.startVotingPeriod}
+                  endVotingPeriod={this.endVotingPeriod}
+                  {...this.state}
+                />
+                <BallotUI
+                  registerVoter={this.registerVoter}
+                  castVote={this.castVote}
+                  {...this.state}
+                />
+              </div>
+              {this.state.balance < 0.1 && (
+                <Instructions
+                  ganacheAccounts={ganacheAccounts}
+                  name="metamask"
+                  accounts={accounts} />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
