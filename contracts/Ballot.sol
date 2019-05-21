@@ -36,8 +36,6 @@ contract Ballot is Initializable {
 
 	//creates a new ballot contract
     function initialize(
-        string memory _ballotName,
-        string memory _proposal,
         address _official
         ) public initializer {
         countResult = 0;
@@ -45,8 +43,8 @@ contract Ballot is Initializable {
         totalVoter = 0;
         totalVote = 0;
         owner = msg.sender;
-        ballotName = _ballotName;
-        proposal = _proposal;
+        ballotName = '';
+        proposal = '';
         official = _official;
 
         state = State.Created;
