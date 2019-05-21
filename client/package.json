@@ -2,7 +2,7 @@
   "name": "client",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://justin.dev",
+  "homepage": "https://react-ethereum-example.com",
   "dependencies": {
     "classnames": "^2.2.6",
     "gh-pages": "^2.0.1",
