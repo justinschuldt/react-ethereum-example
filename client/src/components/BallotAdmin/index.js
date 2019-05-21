@@ -38,6 +38,7 @@ export default class BallotAdmin extends Component {
 
   render()  {
     const {
+      contractOfficial,
       startVotingPeriod,
       endVotingPeriod,
       voteState
@@ -60,7 +61,7 @@ export default class BallotAdmin extends Component {
               />
             </Field>
             <Button
-              disabled={voteState !== 'Created'}
+              disabled={voteState !== 'Created' || !contractOfficial}
               type="submit"
               width={1}
              >
@@ -77,7 +78,7 @@ export default class BallotAdmin extends Component {
               />
             </Field>
             <Button
-              disabled={voteState !== 'Created'}
+              disabled={voteState !== 'Created' || !contractOfficial}
               type="submit"
               width={1}
             >
@@ -89,13 +90,13 @@ export default class BallotAdmin extends Component {
         <div className={styles.buttons}>
           <Button
             onClick={startVotingPeriod}
-            disabled={voteState !== 'Created'}
+            disabled={voteState !== 'Created' || !contractOfficial}
             >
             Start Voting Period
           </Button>
           <Button
             onClick={endVotingPeriod}
-            disabled={voteState !== 'Voting'}
+            disabled={voteState !== 'Voting' || !contractOfficial}
             >
             End Voting Period
           </Button>
